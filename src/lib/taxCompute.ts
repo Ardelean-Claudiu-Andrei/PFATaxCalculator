@@ -43,40 +43,43 @@ export function computeByRules(
   const minGrossSalary = config?.minGrossSalary ?? 4050;
   const rates = {
     CAS_rate: config?.rates?.CAS_rate ?? 0.25,
-    CASS_rate: config?.rates?.CASS_rate ?? 0.10,
-    incomeTax_rate: config?.rates?.incomeTax_rate ?? 0.10,
+    CASS_rate: config?.rates?.CASS_rate ?? 0.1,
+    incomeTax_rate: config?.rates?.incomeTax_rate ?? 0.1,
   };
 
   // group per month
   const monthRevenues: Record<number, number> = {};
   const monthExpenses: Record<number, number> = {};
-  MONTHS.forEach(m => { monthRevenues[m]=0; monthExpenses[m]=0; });
+  for (const m of MONTHS) {
+    monthRevenues[m] = 0;
+    monthExpenses[m] = 0;
+  }
 
-  intrari.forEach(({data})=>{
-    if (!data || !data.createdAt) return;
+  for (const {data} of intrari) {
+    if (!data?.createdAt) continue;
     const d = new Date(data.createdAt);
-    if (d.getFullYear() !== year) return;
+    if (d.getFullYear() !== year) continue;
     const m = d.getMonth()+1;
-    const paid = (data.paid === undefined) ? true : !!data.paid;
-    if (!paid) return;
+    const paid = data.paid ?? true;
+    if (!paid) continue;
     monthRevenues[m] += Number(data.amount||0);
-  });
+  }
 
-  iesiri.forEach(({data})=>{
-    if (!data || !data.createdAt) return;
+  for (const {data} of iesiri) {
+    if (!data?.createdAt) continue;
     const d = new Date(data.createdAt);
-    if (d.getFullYear() !== year) return;
+    if (d.getFullYear() !== year) continue;
     const m = d.getMonth()+1;
     monthExpenses[m] += Number(data.amount||0);
-  });
+  };
 
   const monthlyNetPreTax: Record<number, number> = {};
-  MONTHS.forEach(m => {
+  for (const m of MONTHS) {
     const rev = monthRevenues[m] || 0;
     const exp = monthExpenses[m] || 0;
     // taxable pre-tax net: if expenses exceed revenues, taxable net is 0 for that month
     monthlyNetPreTax[m] = rev > 0 ? Math.max(0, rev - exp) : 0;
-  });
+  }
 
   const annualNet = MONTHS.reduce((s,m)=> s + monthlyNetPreTax[m], 0);
 

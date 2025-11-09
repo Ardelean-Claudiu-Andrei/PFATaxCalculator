@@ -11,7 +11,7 @@ import Invoices from './src/pages/Invoices';
 import Expenses from './src/pages/Expenses';
 import Taxes from './src/pages/Taxes';
 import Profile from './src/pages/Profile';
-import Settings from './src/pages/Settings';
+
 import NotFound from './src/pages/NotFound';
 import Login from './src/pages/Login';
 

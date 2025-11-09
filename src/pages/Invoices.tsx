@@ -9,7 +9,7 @@ type FormState = {
   id?: string | null;
   series: string;
   number: string;
-  amount: number;
+  amount: string;
   client: string;
   description: string;
   createdAt: string; // ISO
@@ -21,7 +21,7 @@ const emptyForm = (): FormState => ({
   id: null,
   series: "PFA",
   number: "",
-  amount: 0,
+  amount: '',
   client: "",
   description: "",
   createdAt: new Date().toISOString(),
@@ -52,10 +52,11 @@ const Invoices: React.FC = () => {
 
   const handleAdd = async () => {
     if (!uid) return toast.error("Autentifică-te mai întâi");
-    if (!form.amount || form.amount <= 0) return toast.error("Introduce o sumă > 0");
+    const amount = Number(form.amount);
+    if (Number.isNaN(amount) || amount <= 0) return toast.error("Introduce o sumă > 0");
     // prepare payload - design: treat createdAt as provided or now
     const payload = {
-      amount: Number(form.amount),
+      amount,
       series: form.series,
       number: form.number,
       paid: !!form.paid,
@@ -79,9 +80,10 @@ const Invoices: React.FC = () => {
   const handleSaveEdit = async () => {
     if (!uid) return toast.error("Autentifică-te mai întâi");
     if (!form.id) return toast.error("Id factura lipsă");
-    if (!form.amount || form.amount <= 0) return toast.error("Introduce o sumă > 0");
+    const amount = Number(form.amount);
+    if (Number.isNaN(amount) || amount <= 0) return toast.error("Introduce o sumă > 0");
     const payload: any = {
-      amount: Number(form.amount),
+      amount,
       series: form.series,
       number: form.number,
       paid: !!form.paid,
@@ -110,7 +112,7 @@ const Invoices: React.FC = () => {
       id,
       series: d.series ?? "PFA",
       number: d.number ?? "",
-      amount: Number(d.amount ?? 0),
+      amount: (d.amount ?? '').toString(),
       client: d.client ?? "",
       description: d.description ?? d.note ?? "",
       createdAt: d.createdAt ?? new Date().toISOString(),
@@ -156,7 +158,7 @@ const Invoices: React.FC = () => {
             </div>
             <div>
               <label htmlFor="amount" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Sumă (RON)</label>
-              <input id="amount" type="number" step="0.01" value={form.amount} onChange={e => handleChange("amount", Number(e.target.value))}
+              <input id="amount" type="number" step="0.01" value={form.amount} onChange={e => handleChange("amount", e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 dark:focus:ring-yellow-500 focus:border-transparent" />
             </div>
 
@@ -224,7 +226,7 @@ const Invoices: React.FC = () => {
                   <div className="hidden sm:flex items-center border-b py-2">
                     <div className="w-10 text-gray-400 dark:text-gray-300">{idx + 1}</div>
                     <div className="flex-1 text-gray-200 dark:text-white min-w-0 truncate">{(it.data.series || "PFA") + (it.data.number ? "/" + it.data.number : "")}</div>
-                    <div className={"min-w-[120px] text-right font-semibold px-2 whitespace-nowrap " + (it.data.paid === false ? 'text-red-400 dark:text-red-300' : 'text-green-400 dark:text-green-300')}>{new Intl.NumberFormat('ro-RO', { style: 'currency', currency: 'RON', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(it.data.amount || 0)).replace(' RON','\u00A0RON')}</div>
+                    <div className={"min-w-[120px] text-right font-semibold px-2 " + (it.data.paid === false ? 'text-red-400 dark:text-red-300' : 'text-green-400 dark:text-green-300')}>{new Intl.NumberFormat('ro-RO', { style: 'currency', currency: 'RON', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(it.data.amount || 0))}</div>
                     <div className="min-w-[140px] px-2 text-gray-300 dark:text-gray-200 min-w-0 truncate">{it.data.client || '-'}</div>
                     <div className="min-w-[120px] px-2 text-right text-gray-400 dark:text-gray-300">{it.data.createdAt ? new Date(it.data.createdAt).toLocaleDateString('ro-RO') : '-'}</div>
                     <div className="min-w-[120px] px-2 text-right">
@@ -239,7 +241,7 @@ const Invoices: React.FC = () => {
                   <div className="flex flex-col sm:hidden border-b py-3">
                     <div className="flex items-center justify-between">
                       <div className="font-medium text-gray-200 dark:text-white truncate">{(it.data.series || "PFA") + (it.data.number ? "/" + it.data.number : "")}</div>
-                      <div className={"font-semibold whitespace-nowrap " + (it.data.paid === false ? 'text-red-400 dark:text-red-300' : 'text-green-400 dark:text-green-300')}>{new Intl.NumberFormat('ro-RO', { style: 'currency', currency: 'RON', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(it.data.amount || 0)).replace(' RON','\u00A0RON')}</div>
+                      <div className={"font-semibold " + (it.data.paid === false ? 'text-red-400 dark:text-red-300' : 'text-green-400 dark:text-green-300')}>{new Intl.NumberFormat('ro-RO', { style: 'currency', currency: 'RON', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(it.data.amount || 0))}</div>
                     </div>
                     <div className="mt-2 flex items-center justify-between text-sm text-gray-300 dark:text-gray-200">
                       <div className="min-w-0 truncate">{it.data.client || '-'}</div>

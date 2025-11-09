@@ -17,6 +17,7 @@ const Taxes: React.FC = () => {
 
   const [showDetails, setShowDetails] = useState<number | null>(null);
   const [showDiffDetails, setShowDiffDetails] = useState(false);
+  const [showTotalDetails, setShowTotalDetails] = useState(false);
 
   const formatAmount = (amount: number) =>
     new Intl.NumberFormat('ro-RO', { style: 'currency', currency: 'RON', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount);
@@ -110,7 +111,9 @@ const Taxes: React.FC = () => {
               )}
             </div>
 
-            <div className="px-4 sm:px-6 py-6 mt-4 bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
+            <button
+              onClick={() => setShowTotalDetails(true)}
+              className="w-full px-4 sm:px-6 py-6 mt-4 bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
               {/* full totals for sm+ */}
               <div className="hidden sm:grid items-center text-sm font-semibold text-gray-900 dark:text-white"
                 style={{ gridTemplateColumns: '1fr 140px 140px 120px 120px 120px 160px', columnGap: '8px' }}>
@@ -132,7 +135,7 @@ const Taxes: React.FC = () => {
                 </div>
                 <div className="text-right font-semibold">{formatAmount(totals.netIncome)}</div>
               </div>
-            </div>
+            </button>
           </div>
         </div>
 
@@ -152,6 +155,29 @@ const Taxes: React.FC = () => {
                 <li className="flex justify-between"><span>Venit net</span><strong>{formatAmount(months[showDetails - 1].netIncome)}</strong></li>
               </ul>
               <button onClick={() => setShowDetails(null)} className="mt-6 w-full px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">
+                Închide
+              </button>
+            </motion.div>
+          </div>
+        )}
+
+        {showTotalDetails && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
+              className="bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-xl border border-gray-200 dark:border-gray-700">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+                Detalii — Total Anual {year}
+              </h2>
+              <ul className="space-y-2 text-gray-700 dark:text-gray-300">
+                <li className="flex justify-between"><span>Total venituri</span><strong>{formatAmount(totals.revenues)}</strong></li>
+                <li className="flex justify-between"><span>Total cheltuieli</span><strong>{formatAmount(totals.expenses)}</strong></li>
+                <li className="flex justify-between border-t border-gray-200 dark:border-gray-600 pt-2"><span>Venit brut</span><strong>{formatAmount(totals.revenues - totals.expenses)}</strong></li>
+                <li className="flex justify-between"><span>Total CAS</span><strong>{formatAmount(totals.cas)}</strong></li>
+                <li className="flex justify-between"><span>Total CASS</span><strong>{formatAmount(totals.cass)}</strong></li>
+                <li className="flex justify-between"><span>Total impozit pe venit</span><strong>{formatAmount(totals.incomeTax)}</strong></li>
+                <li className="flex justify-between border-t border-gray-200 dark:border-gray-600 pt-2 font-semibold"><span>Total venit net</span><strong>{formatAmount(totals.netIncome)}</strong></li>
+              </ul>
+              <button onClick={() => setShowTotalDetails(false)} className="mt-6 w-full px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">
                 Închide
               </button>
             </motion.div>

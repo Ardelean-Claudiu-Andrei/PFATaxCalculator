@@ -3,7 +3,10 @@ import { onAuthStateChanged } from "firebase/auth";
 import { auth, db } from "../../firebase";
 import { ref, onValue, off, DataSnapshot } from "firebase/database";
 
-export type Intrare = { amount: number; series?: string; number?: string; paid?: boolean; createdAt?: string; paidAt?: string | null; note?: string; };
+export type Intrare = {
+  description: string | undefined;
+  client: string; amount: number; series?: string; number?: string; paid?: boolean; createdAt?: string; paidAt?: string | null; note?: string; 
+};
 export type Iesire  = { amount: number; category?: string; name?: string; createdAt?: string; note?: string; };
 export type ProfileData = { firstName: string; lastName: string; email: string; createdAt?: string; };
 export type TaxConfig = { minGrossSalary: number; threshold: 12 | 24; rates: { CAS_rate: number; CASS_rate: number; incomeTax_rate: number }; applyCAS?: boolean; cassOnRevenue?: boolean; };
@@ -11,7 +14,7 @@ export type TaxConfig = { minGrossSalary: number; threshold: 12 | 24; rates: { C
 const DEFAULT_TAX: TaxConfig = {
   minGrossSalary: 4050,
   threshold: 12,
-  rates: { CAS_rate: 0.25, CASS_rate: 0.10, incomeTax_rate: 0.10 },
+  rates: { CAS_rate: 0.25, CASS_rate: 0.1, incomeTax_rate: 0.1 },
   applyCAS: false,
   cassOnRevenue: true,
 };

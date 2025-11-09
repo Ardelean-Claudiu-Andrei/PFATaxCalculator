@@ -22,7 +22,7 @@ const Profile: React.FC = () => {
   const [taxConfig, setTaxConfig] = useState<TaxConfig>({
     minGrossSalary: 4050,
     threshold: 12 as 12 | 24,
-    rates: { CAS_rate: 0.25, CASS_rate: 0.10, incomeTax_rate: 0.10 }
+    rates: { CAS_rate: 0.25, CASS_rate: 0.1, incomeTax_rate: 0.1 }
   });
 
   // Load profile (RTDB) for current user

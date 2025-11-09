@@ -6,7 +6,7 @@ import ExpenseItem from '../components/ExpenseItem';
 import { auth } from '../../firebase';
 import { addIesire, deleteIesire, subscribeIesiri, updateIesire } from '../lib/rtdb';
 import { toast } from 'react-toastify';
-import { useUserData } from "../hooks/useUserData";
+
 import { onAuthStateChanged } from "firebase/auth";
 
 type Category = 'Salary' | 'Consumables' | 'Other';
@@ -23,35 +23,46 @@ const Expenses: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddForm, setShowAddForm] = useState(false);
 
-  const [form, setForm] = useState<{ category: Category; name: string; amount: number; createdAt?: string }>({
-    category: 'Other', name: '', amount: 0, createdAt: new Date().toISOString()
+  const [form, setForm] = useState<{ category: Category; name: string; amount: string; createdAt?: string }>({
+    category: 'Other', name: '', amount: '', createdAt: new Date().toISOString()
   });
 
   const [editingExpense, setEditingExpense] = useState<{ id: string; category: Category; name: string; amount: number; createdAt: string } | null>(null);
 
   const [expenses, setExpenses] = useState<Expense[]>([]);
 
+  const mapExpenseData = (id: string, data: any): Expense => ({
+    id,
+    category: (data.category as Category) || "Other",
+    name: data.name || "",
+    amount: data.amount || 0,
+    createdAt: data.createdAt ? new Date(data.createdAt) : new Date(),
+  });
+
+  const handleExpensesList = (list: Array<{ id: string; data: any }>) => {
+    const mapped = list.map(({ id, data }) => mapExpenseData(id, data));
+    mapped.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    setExpenses(mapped);
+  };
+
+  const setupExpensesSubscription = (userId: string) => {
+    return subscribeIesiri(userId, handleExpensesList);
+  };
+
   useEffect(() => {
     let unsubDB: (() => void) | undefined;
 
-    const unsubAuth = onAuthStateChanged(auth, (u) => {
+    const unsubAuth = onAuthStateChanged(auth, (user) => {
       if (unsubDB) {
         unsubDB();
         unsubDB = undefined;
       }
-      if (!u) { setExpenses([]); return; }
+      if (!user) {
+        setExpenses([]);
+        return;
+      }
 
-      unsubDB = subscribeIesiri(u.uid, (list) => {
-        const mapped: Expense[] = list.map(({ id, data }) => ({
-          id,
-          category: (data.category as Category) || "Other",
-          name: data.name || "",
-          amount: data.amount || 0,
-          createdAt: data.createdAt ? new Date(data.createdAt) : new Date(),
-        }));
-        mapped.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-        setExpenses(mapped);
-      });
+      unsubDB = setupExpensesSubscription(user.uid);
     });
 
     return () => {
@@ -63,7 +74,7 @@ const Expenses: React.FC = () => {
   const handleEdit = (expense: Expense) => {
     // open modal with expense data for editing
     setEditingExpense({ id: expense.id, category: expense.category, name: expense.name || '', amount: expense.amount, createdAt: expense.createdAt.toISOString() });
-    setForm({ category: expense.category, name: expense.name || '', amount: expense.amount, createdAt: expense.createdAt.toISOString() });
+    setForm({ category: expense.category, name: expense.name || '', amount: expense.amount.toString(), createdAt: expense.createdAt.toISOString() });
     setShowAddForm(true);
   };
 
@@ -163,7 +174,7 @@ const Expenses: React.FC = () => {
                   id="expenseAmount"
                   type="number"
                   value={form.amount}
-                  onChange={(e) => setForm({ ...form, amount: Number(e.target.value) })}
+                  onChange={(e) => setForm({ ...form, amount: e.target.value })}
                   placeholder="Sumă (RON)"
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 dark:focus:ring-yellow-500 focus:border-transparent"
                 />
@@ -179,7 +190,7 @@ const Expenses: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-3 mt-5">
                 <button
-                  onClick={() => { setShowAddForm(false); setEditingExpense(null); setForm({ category: 'Other', name: '', amount: 0, createdAt: new Date().toISOString() }); }}
+                  onClick={() => { setShowAddForm(false); setEditingExpense(null); setForm({ category: 'Other', name: '', amount: '', createdAt: new Date().toISOString() }); }}
                   className="w-full px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded-lg"
                 >
                   Anulează
@@ -188,7 +199,8 @@ const Expenses: React.FC = () => {
                   onClick={async () => {
                     const u = auth.currentUser;
                     if (!u) { toast.error("Nu ești autentificat"); return; }
-                    if (!form.amount || form.amount <= 0) { toast.error("Sumă invalidă"); return; }
+                    const amount = Number(form.amount);
+                    if (Number.isNaN(amount) || amount <= 0) { toast.error("Sumă invalidă"); return; }
                     if (editingExpense) {
                       // save edit
                       await updateIesire(u.uid, editingExpense.id, {
@@ -209,7 +221,7 @@ const Expenses: React.FC = () => {
                     }
                     setShowAddForm(false);
                     setEditingExpense(null);
-                    setForm({ category: 'Other', name: '', amount: 0, createdAt: new Date().toISOString() });
+                    setForm({ category: 'Other', name: '', amount: '', createdAt: new Date().toISOString() });
                   }}
                   className="w-full px-4 py-2 bg-blue-600 dark:bg-yellow-500 text-white dark:text-gray-900 rounded-lg"
                 >

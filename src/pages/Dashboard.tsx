@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
+
 import { TrendingUp, TrendingDown, DollarSign, Calendar } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
@@ -12,7 +12,7 @@ const Dashboard: React.FC = () => {
   const [selectedPeriod, setSelectedPeriod] = useState<'month' | 'year'>('month');
   const currentMonth = new Date().getMonth() + 1;
   const currentYear = new Date().getFullYear();
-  const { intrari, iesiri, taxConfig } = useUserData();
+  const { intrari, iesiri, taxConfig, profile } = useUserData();
   const calc = useMemo(() => computeByRules(intrari, iesiri, currentYear, taxConfig), [intrari, iesiri, taxConfig]);
   const month = calc.months.find(m => m.month === currentMonth)!;
   const data = selectedPeriod === 'month'
@@ -31,7 +31,7 @@ const Dashboard: React.FC = () => {
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
               <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
-                Dashboard
+                Hi, {profile?.firstName || 'there'}
               </h1>
               <p className="text-gray-600 dark:text-gray-400">Rezumat financiar</p>
             </div>

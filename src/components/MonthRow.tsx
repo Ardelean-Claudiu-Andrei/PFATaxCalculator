@@ -35,9 +35,9 @@ const MonthRow: React.FC<MonthRowProps> = ({ data, onClick }) => {
   };
 
   return (
-    <div
+    <button
       onClick={onClick}
-      className="bg-white dark:bg-gray-800 rounded-lg px-4 sm:px-0 py-3 sm:py-4 shadow-sm border border-gray-100 dark:border-gray-700 cursor-pointer hover:shadow-md transition-shadow"
+      className="w-full text-left bg-white dark:bg-gray-800 rounded-lg px-4 sm:px-0 py-3 sm:py-4 shadow-sm border border-gray-100 dark:border-gray-700 cursor-pointer hover:shadow-md transition-shadow"
     >
       {/* Mobile compact view: show month and a compact summary */}
       <div className="flex flex-col sm:hidden">
@@ -63,7 +63,7 @@ const MonthRow: React.FC<MonthRowProps> = ({ data, onClick }) => {
           <ChevronRight className="w-4 h-4 text-gray-400" />
         </div>
       </div>
-    </div>
+    </button>
   );
 };
 
