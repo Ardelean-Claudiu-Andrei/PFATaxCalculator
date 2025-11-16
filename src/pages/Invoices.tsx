@@ -191,11 +191,11 @@ const Invoices: React.FC = () => {
           <div className="flex gap-2 mt-4">
             {editing ? (
               <>
-                <button onClick={handleSaveEdit} className="px-4 py-2 bg-green-600 text-white rounded">Salvează</button>
-                <button onClick={() => { setForm(emptyForm()); setEditing(false); }} className="px-4 py-2 bg-gray-200 rounded">Anulează</button>
+                <button onClick={handleSaveEdit} className="px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-green-600 text-white hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600">Salvează</button>
+                <button onClick={() => { setForm(emptyForm()); setEditing(false); }} className="px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600">Anulează</button>
               </>
             ) : (
-              <button onClick={handleAdd} className="px-4 py-2 bg-blue-600 text-white rounded">Adaugă</button>
+              <button onClick={handleAdd} className="px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-blue-600 text-white hover:bg-blue-700 dark:bg-yellow-500 dark:text-gray-900 dark:hover:bg-yellow-600">Adaugă</button>
             )}
           </div>
         </div>

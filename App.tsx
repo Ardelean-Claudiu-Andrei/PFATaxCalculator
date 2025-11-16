@@ -11,6 +11,7 @@ import Invoices from './src/pages/Invoices';
 import Expenses from './src/pages/Expenses';
 import Taxes from './src/pages/Taxes';
 import Profile from './src/pages/Profile';
+import CreateProfile from './src/pages/CreateProfile';
 
 import NotFound from './src/pages/NotFound';
 import Login from './src/pages/Login';
@@ -62,6 +63,7 @@ const App: React.FC = () => {
               }
             />
             <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<CreateProfile />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           <ToastContainer
