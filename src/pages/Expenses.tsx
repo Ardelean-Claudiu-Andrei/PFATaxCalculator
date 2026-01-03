@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Plus, Search } from 'lucide-react';
 import Layout from '../components/Layout';
+import { useUserData } from '../hooks/useUserData';
+import { suggestDeductibility } from '../lib/deductibilitySuggest';
 import ExpenseItem from '../components/ExpenseItem';
 import { auth } from '../../firebase';
 import { addIesire, deleteIesire, subscribeIesiri, updateIesire } from '../lib/rtdb';
@@ -9,7 +11,7 @@ import { toast } from 'react-toastify';
 
 import { onAuthStateChanged } from "firebase/auth";
 
-type Category = 'Salary' | 'Consumables' | 'Other';
+type Category = 'Salary' | 'Consumables' | 'Other' | 'Training' | 'Equipment';
 
 type DeductibilityType = 'full' | 'partial' | 'limited' | 'asset' | 'none';
 
@@ -35,9 +37,27 @@ interface Expense {
   };
 }
 
+// Default form state used when opening the Add modal
+const DEFAULT_FORM = {
+  category: 'Other' as Category,
+  name: '',
+  amount: '',
+  createdAt: new Date().toISOString(),
+  deductType: 'full' as DeductibilityType,
+  businessUsePct: '100',
+  partialPct: '50',
+  limitGroup: 'health',
+  limitAnnualRon: '',
+  assetCostRon: '',
+  assetLifeMonths: '36',
+  assetStartDate: new Date().toISOString(),
+};
+
 const Expenses: React.FC = () => {
+  const { profile } = useUserData();
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddForm, setShowAddForm] = useState(false);
+  const [deductTouched, setDeductTouched] = useState(false);
 
   const [form, setForm] = useState<{
     category: Category;
@@ -53,18 +73,7 @@ const Expenses: React.FC = () => {
     assetLifeMonths: string;
     assetStartDate?: string;
   }>({
-    category: 'Other',
-    name: '',
-    amount: '',
-    createdAt: new Date().toISOString(),
-    deductType: 'full',
-    businessUsePct: '100',
-    partialPct: '50',
-    limitGroup: 'health',
-    limitAnnualRon: '',
-    assetCostRon: '',
-    assetLifeMonths: '36',
-    assetStartDate: new Date().toISOString(),
+    ...DEFAULT_FORM,
   });
 
   const [editingExpense, setEditingExpense] = useState<{ id: string; category: Category; name: string; amount: number; createdAt: string } | null>(null);
@@ -79,6 +88,27 @@ const Expenses: React.FC = () => {
     createdAt: data.createdAt ? new Date(data.createdAt) : new Date(),
     deductibility: data.deductibility,
   });
+  // Domain-aware suggestion memo
+  const suggestion = useMemo(() => {
+    if (!profile?.activity?.domain) return null;
+    return suggestDeductibility({
+      domain: profile.activity.domain,
+      category: (form.category || 'Other').toLowerCase(),
+      title: form.name,
+      amount: Number(form.amount || '0'),
+    });
+  }, [profile?.activity?.domain, form.category, form.name, form.amount]);
+
+  // Auto-apply strong suggestions when user hasn't changed the dropdown
+  useEffect(() => {
+    if (!suggestion || deductTouched) return;
+    if (suggestion.type === 'none' && form.deductType !== 'none') {
+      setForm(prev => ({ ...prev, deductType: 'none' }));
+    }
+    if (suggestion.type === 'asset' && form.deductType === 'full') {
+      setForm(prev => ({ ...prev, deductType: 'asset' }));
+    }
+  }, [suggestion, deductTouched]);
 
   const handleExpensesList = (list: Array<{ id: string; data: any }>) => {
     const mapped = list.map(({ id, data }) => mapExpenseData(id, data));
@@ -130,6 +160,7 @@ const Expenses: React.FC = () => {
       assetLifeMonths: d?.asset?.usefulLifeMonths ? String(d.asset.usefulLifeMonths) : '36',
       assetStartDate: d?.asset?.startDate ?? expense.createdAt.toISOString(),
     });
+    setDeductTouched(false);
     setShowAddForm(true);
   };
 
@@ -155,7 +186,12 @@ const Expenses: React.FC = () => {
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Cheltuieli</h1>
           <button
-            onClick={() => setShowAddForm(true)}
+            onClick={() => {
+              setEditingExpense(null);
+              setDeductTouched(false);
+              setForm(DEFAULT_FORM);
+              setShowAddForm(true);
+            }}
             className="inline-flex items-center px-4 py-2 bg-blue-600 dark:bg-yellow-500 text-white dark:text-gray-900 rounded-lg hover:bg-blue-700 dark:hover:bg-yellow-600 transition-colors"
           >
             <Plus className="w-4 h-4 mr-2" />
@@ -203,7 +239,7 @@ const Expenses: React.FC = () => {
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md"
+              className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md max-h-[85vh] overflow-y-auto"
             >
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
                 Adaugă cheltuială nouă
@@ -211,12 +247,17 @@ const Expenses: React.FC = () => {
               <div className="space-y-3">
                 <select
                   value={form.category}
-                  onChange={(e) => setForm({ ...form, category: e.target.value as Category })}
+                  onChange={(e) => {
+                    setDeductTouched(false);
+                    setForm({ ...form, category: e.target.value as Category });
+                  }}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 dark:focus:ring-yellow-500 focus:border-transparent"
                 >
                   <option value="Salary">Salary</option>
                   <option value="Consumables">Consumables</option>
                   <option value="Other">Other</option>
+                  <option value="Training">Training / Cursuri</option>
+                  <option value="Equipment">Equipment / Echipamente</option>
                 </select>
                 <input
                   id="expenseName"
@@ -247,7 +288,7 @@ const Expenses: React.FC = () => {
                   <label className="block text-sm text-gray-600 dark:text-gray-300 mb-1">Deductibilitate</label>
                   <select
                     value={form.deductType}
-                    onChange={(e) => setForm({ ...form, deductType: e.target.value as DeductibilityType })}
+                    onChange={(e) => { setDeductTouched(true); setForm({ ...form, deductType: e.target.value as DeductibilityType }); }}
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   >
                     <option value="full">100% (cheltuială curentă)</option>
@@ -259,13 +300,13 @@ const Expenses: React.FC = () => {
 
                   <div className="grid grid-cols-2 gap-3 mt-3">
                     <div>
-                      <label className="block text-xs text-gray-500 dark:text-gray-400">% utilizare profesională</label>
+                      <label className="block text-xs ttext-gray-500 dark:text-gray-400">% utilizare profesională</label>
                       <input
                         type="number"
                         value={form.businessUsePct}
                         onChange={(e) => setForm({ ...form, businessUsePct: e.target.value })}
                         placeholder="100"
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                         min="0"
                         max="100"
                       />
@@ -350,6 +391,32 @@ const Expenses: React.FC = () => {
                       </p>
                     </div>
                   )}
+
+                  {/* Suggestion based on activity domain */}
+                  {profile?.activity?.domain && suggestion && (
+                    (() => {
+                      const s = suggestion;
+                      const badgeClass = s.type === 'none' ? "bg-red-100 text-red-800" : (s.warnings.length === 0 ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800");
+                      const badgeText = s.type === 'none' ? "Sugerat: nedeductibil" : (s.warnings.length === 0 ? "Deductibil sugerat" : "Deductibil (cu justificare)");
+                      return (
+                        <div className="mt-3 text-xs">
+                          <div className={"inline-flex items-center px-2 py-1 rounded " + badgeClass}>
+                            {badgeText}
+                          </div>
+                          {s.warnings?.length ? (
+                            <ul className="mt-1 list-disc pl-5 text-gray-500 dark:text-gray-400">
+                              {s.warnings.map((w,i)=>(<li key={i}>{w}</li>))}
+                            </ul>
+                          ) : null}
+                          <div className="mt-2 text-gray-500 dark:text-gray-400">
+                            <button type="button" onClick={()=>setForm({...form, deductType:'none'})} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 dark:hover:bg-gray-700">
+                              Marchează ca nedeductibil (doar cashflow)
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })()
+                  )}
                 </div>
               </div>
 
@@ -358,6 +425,7 @@ const Expenses: React.FC = () => {
                   onClick={() => {
                     setShowAddForm(false);
                     setEditingExpense(null);
+                    setDeductTouched(false);
                     setForm({
                       category: 'Other',
                       name: '',
@@ -373,7 +441,7 @@ const Expenses: React.FC = () => {
                       assetStartDate: new Date().toISOString(),
                     });
                   }}
-                  className="w-full px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded-lg"
+                  className="w-full px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 >
                   Anulează
                 </button>

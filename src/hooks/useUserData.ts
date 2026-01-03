@@ -28,7 +28,14 @@ export type Iesire  = {
     };
   };
 };
-export type ProfileData = { firstName: string; lastName: string; email: string; createdAt?: string; };
+export type ActivityDomain = 'IT' | 'MEDICAL' | 'OTHER';
+export type UserActivityProfile = {
+  domain: ActivityDomain;
+  caenOrSpecialization?: string;
+  entityType?: 'PFA' | 'PFI';
+  taxRegime?: 'REAL' | 'NORMA';
+};
+export type ProfileData = { firstName: string; lastName: string; email: string; createdAt?: string; activity?: UserActivityProfile; };
 export type TaxConfig = { minGrossSalary: number; threshold: 12 | 24; rates: { CAS_rate: number; CASS_rate: number; incomeTax_rate: number }; applyCAS?: boolean; cassOnRevenue?: boolean; };
 
 const DEFAULT_TAX: TaxConfig = {

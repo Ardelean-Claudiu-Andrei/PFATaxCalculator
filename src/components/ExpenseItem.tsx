@@ -6,7 +6,7 @@ import { ro } from 'date-fns/locale';
 
 interface Expense {
   id: string;
-  category: 'Salary' | 'Consumables' | 'Other';
+  category: 'Salary' | 'Consumables' | 'Other' | 'Training' | 'Equipment';
   name?: string;
   amount: number;
   createdAt: Date;
@@ -43,6 +43,10 @@ const ExpenseItem: React.FC<ExpenseItemProps> = ({ expense, onEdit, onDelete }) 
         return 'Consumabile';
       case 'Other':
         return 'Altele';
+      case 'Training':
+        return 'Training / Cursuri';
+      case 'Equipment':
+        return 'Echipamente';
       default:
         return category;
     }

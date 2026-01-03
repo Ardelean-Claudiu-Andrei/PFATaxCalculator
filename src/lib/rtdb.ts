@@ -51,11 +51,20 @@ export type Iesire = {
   };
 };
 
+export type ActivityDomain = 'IT' | 'MEDICAL' | 'OTHER';
+export type UserActivityProfile = {
+  domain: ActivityDomain;
+  caenOrSpecialization?: string;
+  entityType?: 'PFA' | 'PFI';
+  taxRegime?: 'REAL' | 'NORMA';
+};
+
 export type ProfileData = {
   firstName: string;
   lastName: string;
   email: string;
   createdAt?: string;
+  activity?: UserActivityProfile;
 };
 
 export type TaxConfig = {
@@ -76,6 +85,10 @@ export async function saveProfile(uid: string, data: Partial<ProfileData>) {
   await update(ref(db, `users/${uid}/profile`), {
     ...data,
   });
+}
+
+export async function updateActivity(uid: string, patch: Partial<UserActivityProfile>) {
+  await update(ref(db, `users/${uid}/profile/activity`), { ...patch });
 }
 
 // ---------- INTRĂRI ----------

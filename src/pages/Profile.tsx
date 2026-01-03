@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { LogOut, Save } from 'lucide-react';
 import Layout from '../components/Layout';
 import { auth } from '../../firebase';
-import { getProfile, saveProfile } from '../lib/rtdb';
+import { getProfile, saveProfile, updateActivity } from '../lib/rtdb';
 import { signOut } from 'firebase/auth';
 import { toast } from 'react-toastify';
 import { useNavigate } from "react-router-dom";
@@ -16,6 +16,7 @@ const Profile: React.FC = () => {
     lastName: '',
     email: ''
   });
+  const [activity, setActivity] = useState<{ domain: 'IT'|'MEDICAL'|'OTHER'; caenOrSpecialization?: string; entityType?: 'PFA'|'PFI'; taxRegime?: 'REAL'|'NORMA' } | null>(null);
 
   // Load profile (RTDB) for current user
   useEffect(() => {
@@ -28,6 +29,7 @@ const Profile: React.FC = () => {
         lastName: p?.lastName || u.displayName?.split(' ')?.slice(1).join(' ') || '',
         email: p?.email || u.email || ''
       });
+      setActivity(p?.activity ?? { domain: 'OTHER' });
     })();
   }, []);
 
@@ -40,6 +42,9 @@ const Profile: React.FC = () => {
       email: profile.email,
       createdAt: new Date().toISOString()
     });
+    if (activity) {
+      await updateActivity(u.uid, activity);
+    }
     toast.success("Profil salvat!");
   };
 
@@ -126,6 +131,46 @@ const Profile: React.FC = () => {
               Salvează
             </button>
           </div>
+        </motion.div>
+
+        {/* Activity Profile */}
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 mt-6"
+        >
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">Profil activitate</h2>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Domeniu activitate</label>
+              <select value={activity?.domain ?? 'OTHER'} onChange={(e)=>setActivity({ ...(activity??{domain:'OTHER'}), domain: e.target.value as 'IT'|'MEDICAL'|'OTHER' })} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 dark:focus:ring-yellow-500 focus:border-transparent">
+                <option value="IT">IT / Software</option>
+                <option value="MEDICAL">Medical / Kineto</option>
+                <option value="OTHER">Altele</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">CAEN / specializare (opțional)</label>
+              <input value={activity?.caenOrSpecialization ?? ''} onChange={(e)=>setActivity({ ...(activity??{domain:'OTHER'}), caenOrSpecialization: e.target.value })} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 dark:focus:ring-yellow-500 focus:border-transparent" placeholder="ex: 6210 sau kinetoterapie"/>
+            </div>
+            <div className="grid grid-cols-2 gap-3 text-gray-700 dark:text-gray-300 mb-2">
+              <div>
+                <label className="block text-sm mb-1">Tip</label>
+                <select value={activity?.entityType ?? 'PFA'} onChange={(e)=>setActivity({ ...(activity??{domain:'OTHER'}), entityType: e.target.value as 'PFA'|'PFI' })} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 dark:focus:ring-yellow-500 focus:border-transparent">
+                  <option value="PFA">PFA</option>
+                  <option value="PFI">PFI</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm mb-1">Regim</label>
+                <select value={activity?.taxRegime ?? 'REAL'} onChange={(e)=>setActivity({ ...(activity??{domain:'OTHER'}), taxRegime: e.target.value as 'REAL'|'NORMA' })} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 dark:focus:ring-yellow-500 focus:border-transparent">
+                  <option value="REAL">Real</option>
+                  <option value="NORMA">Normă</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">Se salvează la apăsarea butonului „Salvează”.</p>
         </motion.div>
       </div>
     </Layout>
