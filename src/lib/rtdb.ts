@@ -19,6 +19,36 @@ export type Iesire = {
   name?: string;
   createdAt?: string; // ISO
   note?: string;
+
+  /**
+   * Deductibilitate (PFA regim real).
+   *
+   * NOTE: În practică deductibilitatea depinde de obiectul activității și de documente justificative.
+   * În platformă o modelăm explicit per-cheltuială, ca să putem calcula corect baza impozabilă.
+   */
+  deductibility?: {
+    type: 'full' | 'partial' | 'limited' | 'asset' | 'none';
+
+    /** procent utilizare profesională (0..100). ex: telefon 50% */
+    businessUsePct?: number;
+
+    /** pentru partial: procent deductibil (0..100). ex: auto 50% */
+    partialPct?: number;
+
+    /** pentru limited: chei de grupare + plafon anual (RON) */
+    limitGroup?: string; // ex: "health" / "pilon3" etc.
+    limitAnnualRon?: number;
+
+    /** pentru asset (mijloc fix): amortizare */
+    asset?: {
+      acquisitionCostRon: number;
+      startDate?: string; // ISO (default: createdAt)
+      usefulLifeMonths: number; // ex: 36
+      method?: 'linear';
+      /** prag inventar vs mijloc fix (RON). default 2500 */
+      thresholdRon?: number;
+    };
+  };
 };
 
 export type ProfileData = {

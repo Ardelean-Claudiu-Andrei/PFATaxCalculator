@@ -7,13 +7,60 @@ import { useUserData } from '../hooks/useUserData';
 import { computeByRules } from '../lib/taxCompute';
 
 const Taxes: React.FC = () => {
-  const [year] = useState(new Date().getFullYear());
+  // const [year] = useState(new Date().getFullYear());
   const { intrari, iesiri, taxConfig } = useUserData();
+  const years = useMemo(() => {
+  const ys = new Set<number>();
+
+  for (const { data } of intrari) {
+    if (data?.createdAt) ys.add(new Date(data.createdAt).getFullYear());
+  }
+  for (const { data } of iesiri) {
+    if (data?.createdAt) ys.add(new Date(data.createdAt).getFullYear());
+  }
+
+  // fallback: dacă n-ai date deloc
+  if (ys.size === 0) ys.add(new Date().getFullYear());
+
+  return Array.from(ys).sort((a, b) => b - a); // desc
+}, [intrari, iesiri]);
+
+const [year, setYear] = useState<number>(() => new Date().getFullYear());
+
+// dacă anul curent nu există în date, sari automat la primul an cu date
+React.useEffect(() => {
+  if (!years.includes(year)) setYear(years[0]);
+}, [years]); // eslint-disable-line react-hooks/exhaustive-deps
+
 
   const { months, totals, differences } = useMemo(() => computeByRules(intrari, iesiri, year, {
     minGrossSalary: taxConfig?.minGrossSalary ?? 4050,
     rates: taxConfig?.rates ?? { CAS_rate: 0.25, CASS_rate: 0.1, incomeTax_rate: 0.1 },
   }), [intrari, iesiri, taxConfig, year]);
+
+  // --- helpers for cash sums (yearly) ---
+  const sumCashExpensesForYear = (list: Array<{ id: string; data: any }>, y: number) =>
+    list.reduce((acc, item) => {
+      const d = item?.data?.createdAt ? new Date(item.data.createdAt) : null;
+      if (!d || d.getFullYear() !== y) return acc;
+      const amount = Number(item?.data?.amount ?? item?.data?.total ?? 0);
+      return acc + (isFinite(amount) ? amount : 0);
+    }, 0);
+
+  const sumCashIncomeForYear = (list: Array<{ id: string; data: any }>, y: number) =>
+    list.reduce((acc, item) => {
+      const d = item?.data?.createdAt ? new Date(item.data.createdAt) : null;
+      if (!d || d.getFullYear() !== y) return acc;
+      const amount = Number(item?.data?.amount ?? item?.data?.total ?? 0);
+      return acc + (isFinite(amount) ? amount : 0);
+    }, 0);
+
+  const totalIncome = useMemo(() => sumCashIncomeForYear(intrari, year), [intrari, year]);
+  const totalCashExpenses = useMemo(() => sumCashExpensesForYear(iesiri, year), [iesiri, year]);
+  const totalTaxes = useMemo(() => months.reduce((acc, r) => acc + r.cas + r.cass + r.incomeTax, 0), [months]);
+  const fiscalNetAfterTaxes = useMemo(() => totals.netIncome, [totals]);
+  const cashNetAfterAll = useMemo(() => totalIncome - totalCashExpenses - totalTaxes, [totalIncome, totalCashExpenses, totalTaxes]);
+  const difference = useMemo(() => fiscalNetAfterTaxes - cashNetAfterAll, [fiscalNetAfterTaxes, cashNetAfterAll]);
 
   const [showDetails, setShowDetails] = useState<number | null>(null);
   const [showDiffDetails, setShowDiffDetails] = useState(false);
@@ -39,10 +86,43 @@ const Taxes: React.FC = () => {
               <p className="text-gray-600 dark:text-gray-400">Anul {year}</p>
             </div>
             <div className="flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-gray-500" />
-              <span className="text-sm text-gray-600 dark:text-gray-300">Anul {year}</span>
-            </div>
+  <Calendar className="w-5 h-5 text-gray-500" />
+  <select
+    value={year}
+    onChange={(e) => setYear(Number(e.target.value))}
+    className="bg-transparent border border-gray-300 dark:border-gray-600 rounded-lg px-2 py-1 text-sm text-gray-700 dark:text-gray-200"
+  >
+    {years.map((y) => (
+      <option key={y} value={y}>{y}</option>
+    ))}
+  </select>
+</div>
+
           </div>
+        </div>
+
+        {/* Summary KPIs: revenues, fiscal net, cash net */}
+        <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="rounded-xl border border-gray-200 dark:border-gray-700 p-4 bg-white dark:bg-gray-800">
+            <div className="text-sm opacity-70 text-gray-700 dark:text-gray-300">Venituri total</div>
+            <div className="text-2xl font-semibold text-gray-900 dark:text-white">{formatAmount(totalIncome)}</div>
+          </div>
+
+          <div className="rounded-xl border border-gray-200 dark:border-gray-700 p-4 bg-white dark:bg-gray-800">
+            <div className="text-sm opacity-70 text-gray-700 dark:text-gray-300">Net fiscal (după taxe)</div>
+            <div className="text-2xl font-semibold text-gray-900 dark:text-white">{formatAmount(fiscalNetAfterTaxes)}</div>
+            <div className="text-xs opacity-60 mt-1 text-gray-600 dark:text-gray-400">Bazat pe cheltuieli deductibile (incl. amortizare)</div>
+          </div>
+
+          <div className="rounded-xl border border-gray-200 dark:border-gray-700 p-4 bg-white dark:bg-gray-800">
+            <div className="text-sm opacity-70 text-gray-700 dark:text-gray-300">Net cash (după taxe + toate cheltuielile)</div>
+            <div className="text-2xl font-semibold text-gray-900 dark:text-white">{formatAmount(cashNetAfterAll)}</div>
+            <div className="text-xs opacity-60 mt-1 text-gray-600 dark:text-gray-400">Bani rămași efectiv (cashflow)</div>
+          </div>
+        </div>
+
+        <div className="mt-2 text-sm opacity-70 text-gray-700 dark:text-gray-300">
+          Diferență (amortizare / timing): <span className="font-medium text-gray-900 dark:text-white">{formatAmount(difference)}</span>
         </div>
 
         <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">

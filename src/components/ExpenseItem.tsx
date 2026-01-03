@@ -10,6 +10,11 @@ interface Expense {
   name?: string;
   amount: number;
   createdAt: Date;
+  deductibility?: {
+    type: 'full' | 'partial' | 'limited' | 'asset' | 'none';
+    businessUsePct?: number;
+    partialPct?: number;
+  };
 }
 
 interface ExpenseItemProps {
@@ -43,6 +48,16 @@ const ExpenseItem: React.FC<ExpenseItemProps> = ({ expense, onEdit, onDelete }) 
     }
   };
 
+  const getDeductLabel = () => {
+    const d = expense.deductibility;
+    if (!d) return 'Deductibil 100%';
+    if (d.type === 'none') return 'Nedeductibil';
+    if (d.type === 'asset') return 'Mijloc fix (amortizare)';
+    if (d.type === 'limited') return 'Plafon anual';
+    if (d.type === 'partial') return `Parțial (${d.partialPct ?? 50}%)`;
+    return `Deductibil (${d.businessUsePct ?? 100}%)`;
+  };
+
   return (
     <>
       {/* Desktop / list row view (match Invoices) */}
@@ -65,8 +80,9 @@ const ExpenseItem: React.FC<ExpenseItemProps> = ({ expense, onEdit, onDelete }) 
           -{formatAmount(expense.amount)}
         </div>
 
-        <div className="min-w-[140px] px-2 text-gray-300 dark:text-gray-200 text-sm">
-          {format(expense.createdAt, 'dd MMM yyyy', { locale: ro })}
+        <div className="min-w-[220px] px-2 text-gray-300 dark:text-gray-200 text-sm">
+          <div>{format(expense.createdAt, 'dd MMM yyyy', { locale: ro })}</div>
+          <div className="text-xs text-gray-400 dark:text-gray-400">{getDeductLabel()}</div>
         </div>
 
         <div className="min-w-[120px] px-2 text-right">
@@ -89,6 +105,7 @@ const ExpenseItem: React.FC<ExpenseItemProps> = ({ expense, onEdit, onDelete }) 
               {expense.name || getCategoryLabel(expense.category)}
             </div>
             <div className="mt-1 text-sm text-gray-500 dark:text-gray-400">{format(expense.createdAt, 'dd MMM yyyy', { locale: ro })}</div>
+            <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">{getDeductLabel()}</div>
           </div>
           <div className="ml-3 text-right">
             <div className="font-semibold text-red-600 dark:text-red-400 whitespace-nowrap">-{formatAmount(expense.amount)}</div>

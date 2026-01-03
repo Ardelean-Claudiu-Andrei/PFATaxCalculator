@@ -1,4 +1,5 @@
 import type { Intrare, Iesire, TaxConfig } from "../hooks/useUserData";
+import { allocateDeductible, sumAllocationsByMonth } from "./deductibility";
 
 export type MonthlyCalc = {
   month: number; // 1-12
@@ -65,13 +66,18 @@ export function computeByRules(
     monthRevenues[m] += Number(data.amount||0);
   }
 
-  for (const {data} of iesiri) {
-    if (!data?.createdAt) continue;
-    const d = new Date(data.createdAt);
-    if (d.getFullYear() !== year) continue;
-    const m = d.getMonth()+1;
-    monthExpenses[m] += Number(data.amount||0);
-  };
+  // expenses => folosim deductibilitate (full/partial/limited/asset)
+  // limited are plafon anual per-grup; urmărim cât plafon a mai rămas în anul curent.
+  const limitedRemainingByGroup: Record<string, number> = {};
+  const allAllocs = iesiri
+    .slice()
+    .sort((a, b) => new Date(a.data.createdAt || 0).getTime() - new Date(b.data.createdAt || 0).getTime())
+    .flatMap(({ id, data }) => allocateDeductible(id, data, year, limitedRemainingByGroup));
+
+  const monthDeductible = sumAllocationsByMonth(allAllocs);
+  for (const m of MONTHS) {
+    monthExpenses[m] += Number(monthDeductible[m] || 0);
+  }
 
   const monthlyNetPreTax: Record<number, number> = {};
   for (const m of MONTHS) {

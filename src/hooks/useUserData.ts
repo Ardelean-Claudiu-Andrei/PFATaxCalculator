@@ -7,7 +7,27 @@ export type Intrare = {
   description: string | undefined;
   client: string; amount: number; series?: string; number?: string; paid?: boolean; createdAt?: string; paidAt?: string | null; note?: string; 
 };
-export type Iesire  = { amount: number; category?: string; name?: string; createdAt?: string; note?: string; };
+export type Iesire  = {
+  amount: number;
+  category?: string;
+  name?: string;
+  createdAt?: string;
+  note?: string;
+  deductibility?: {
+    type: 'full' | 'partial' | 'limited' | 'asset' | 'none';
+    businessUsePct?: number;
+    partialPct?: number;
+    limitGroup?: string;
+    limitAnnualRon?: number;
+    asset?: {
+      acquisitionCostRon: number;
+      startDate?: string;
+      usefulLifeMonths: number;
+      method?: 'linear';
+      thresholdRon?: number;
+    };
+  };
+};
 export type ProfileData = { firstName: string; lastName: string; email: string; createdAt?: string; };
 export type TaxConfig = { minGrossSalary: number; threshold: 12 | 24; rates: { CAS_rate: number; CASS_rate: number; incomeTax_rate: number }; applyCAS?: boolean; cassOnRevenue?: boolean; };
 
