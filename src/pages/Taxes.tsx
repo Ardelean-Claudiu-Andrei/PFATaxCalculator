@@ -5,38 +5,18 @@ import Layout from '../components/Layout';
 import MonthRow from '../components/MonthRow';
 import { useUserData } from '../hooks/useUserData';
 import { computeByRules } from '../lib/taxCompute';
+import { AVAILABLE_YEARS } from '../lib/years';
 
 const Taxes: React.FC = () => {
-  // const [year] = useState(new Date().getFullYear());
   const { intrari, iesiri, taxConfig } = useUserData();
-  const years = useMemo(() => {
-  const ys = new Set<number>();
-
-  for (const { data } of intrari) {
-    if (data?.createdAt) ys.add(new Date(data.createdAt).getFullYear());
-  }
-  for (const { data } of iesiri) {
-    if (data?.createdAt) ys.add(new Date(data.createdAt).getFullYear());
-  }
-
-  // fallback: dacă n-ai date deloc
-  if (ys.size === 0) ys.add(new Date().getFullYear());
-
-  return Array.from(ys).sort((a, b) => b - a); // desc
-}, [intrari, iesiri]);
-
-const [year, setYear] = useState<number>(() => new Date().getFullYear());
-
-// dacă anul curent nu există în date, sari automat la primul an cu date
-React.useEffect(() => {
-  if (!years.includes(year)) setYear(years[0]);
-}, [years]); // eslint-disable-line react-hooks/exhaustive-deps
+  const years = AVAILABLE_YEARS;
+  const [selectedYear, setSelectedYear] = useState<number>(2025);
 
 
-  const { months, totals, differences } = useMemo(() => computeByRules(intrari, iesiri, year, {
+  const { months, totals, differences } = useMemo(() => computeByRules(intrari, iesiri, selectedYear, {
     minGrossSalary: taxConfig?.minGrossSalary ?? 4050,
     rates: taxConfig?.rates ?? { CAS_rate: 0.25, CASS_rate: 0.1, incomeTax_rate: 0.1 },
-  }), [intrari, iesiri, taxConfig, year]);
+  }), [intrari, iesiri, taxConfig, selectedYear]);
 
   // --- helpers for cash sums (yearly) ---
   const sumCashExpensesForYear = (list: Array<{ id: string; data: any }>, y: number) =>
@@ -55,12 +35,24 @@ React.useEffect(() => {
       return acc + (isFinite(amount) ? amount : 0);
     }, 0);
 
-  const totalIncome = useMemo(() => sumCashIncomeForYear(intrari, year), [intrari, year]);
-  const totalCashExpenses = useMemo(() => sumCashExpensesForYear(iesiri, year), [iesiri, year]);
+  const totalIncome = useMemo(() => sumCashIncomeForYear(intrari, selectedYear), [intrari, selectedYear]);
+  const totalCashExpenses = useMemo(() => sumCashExpensesForYear(iesiri, selectedYear), [iesiri, selectedYear]);
   const totalTaxes = useMemo(() => months.reduce((acc, r) => acc + r.cas + r.cass + r.incomeTax, 0), [months]);
   const fiscalNetAfterTaxes = useMemo(() => totals.netIncome, [totals]);
   const cashNetAfterAll = useMemo(() => totalIncome - totalCashExpenses - totalTaxes, [totalIncome, totalCashExpenses, totalTaxes]);
   const difference = useMemo(() => fiscalNetAfterTaxes - cashNetAfterAll, [fiscalNetAfterTaxes, cashNetAfterAll]);
+
+  const hasYearData = useMemo(() => {
+    const hasIntrari = intrari.some(item => {
+      const d = item?.data?.createdAt ? new Date(item.data.createdAt) : null;
+      return d ? d.getFullYear() === selectedYear : false;
+    });
+    const hasIesiri = iesiri.some(item => {
+      const d = item?.data?.createdAt ? new Date(item.data.createdAt) : null;
+      return d ? d.getFullYear() === selectedYear : false;
+    });
+    return hasIntrari || hasIesiri;
+  }, [intrari, iesiri, selectedYear]);
 
   const [showDetails, setShowDetails] = useState<number | null>(null);
   const [showDiffDetails, setShowDiffDetails] = useState(false);
@@ -83,13 +75,13 @@ React.useEffect(() => {
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
               <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">Calcule taxe</h1>
-              <p className="text-gray-600 dark:text-gray-400">Anul {year}</p>
+              <p className="text-gray-600 dark:text-gray-400">Anul {selectedYear}</p>
             </div>
             <div className="flex items-center gap-2">
   <Calendar className="w-5 h-5 text-gray-500" />
   <select
-    value={year}
-    onChange={(e) => setYear(Number(e.target.value))}
+    value={selectedYear}
+    onChange={(e) => setSelectedYear(Number(e.target.value))}
     className="bg-transparent border border-gray-300 dark:border-gray-600 rounded-lg px-2 py-1 text-sm text-gray-700 dark:text-gray-200"
   >
     {years.map((y) => (
@@ -148,46 +140,54 @@ React.useEffect(() => {
             </div>
 
             <div className="space-y-2 px-4 sm:px-6 py-4">
-              {months.map((data) => (
-                <MonthRow key={data.month} data={data} onClick={() => setShowDetails(data.month)} />
-              ))}
-
-              {/* special differences row when some months had expenses > revenues */}
-              {differences && (
-                <button type="button" onClick={() => setShowDiffDetails(true)} className="w-full text-left bg-white dark:bg-gray-800 rounded-lg px-4 py-3 sm:px-0 sm:py-4 shadow-sm border border-gray-100 dark:border-gray-700 cursor-pointer hover:shadow-md transition-shadow">
-                  <div className="hidden sm:grid items-center text-sm font-medium text-gray-600 dark:text-gray-400"
-                    style={{ gridTemplateColumns: '1fr 140px 140px 120px 120px 120px 160px', columnGap: '8px' }}>
-                    <div className="pl-2">Diferență (luni cu cheltuieli &gt; venituri)</div>
-                    <div className="text-right">{formatAmount(0)}</div>
-                    <div className="text-right">{formatAmount(differences.totalDifference)}</div>
-                    <div className="text-right">{formatAmount(-differences.casReduction)}</div>
-                    <div className="text-right">{formatAmount(-differences.cassReduction)}</div>
-                    <div className="text-right">{formatAmount(-(differences.incomeTaxReduction ?? 0))}</div>
-                    <div className="text-right pr-2">{formatAmount(differences.casReduction + differences.cassReduction + (differences.incomeTaxReduction ?? 0))}</div>
-                  </div>
-
-                  <div className="flex sm:hidden items-center justify-between text-sm text-gray-600 dark:text-gray-400">
-                    <div className="flex-1">Diferență</div>
-                    <div className="text-right">{formatAmount(differences.totalDifference ?? 0)}</div>
-                  </div>
-                </button>
-              )}
-              {showDiffDetails && differences && (
-                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
-                    className="bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-xl border border-gray-200 dark:border-gray-700">
-                    <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Detalii — Diferență (cheltuieli &gt; venituri)</h2>
-                    <ul className="space-y-2 text-gray-700 dark:text-gray-300">
-                      <li className="flex justify-between"><span>Total diferență</span><strong>{formatAmount(differences.totalDifference)}</strong></li>
-                      <li className="flex justify-between"><span>Reducere CAS</span><strong>{formatAmount(differences.casReduction)}</strong></li>
-                      <li className="flex justify-between"><span>Reducere CASS</span><strong>{formatAmount(differences.cassReduction)}</strong></li>
-                      <li className="flex justify-between"><span>Impozit pe diferență</span><strong>{formatAmount(-(differences.incomeTaxReduction ?? 0))}</strong></li>
-                      <li className="flex justify-between"><span>Suma CASS (pe luni)</span><strong>{formatAmount(differences.cassMonthSum ?? 0)}</strong></li>
-                      <li className="flex justify-between"><span>Rest CASS (reconciliere)</span><strong>{formatAmount(differences.cassRest ?? 0)}</strong></li>
-                    </ul>
-                    <button onClick={() => setShowDiffDetails(false)} className="mt-6 w-full px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">Închide</button>
-                  </motion.div>
+              {!hasYearData ? (
+                <div className="text-center py-10 text-gray-600 dark:text-gray-400">
+                  Nu există date pentru anul {selectedYear}. Adaugă facturi sau cheltuieli pentru acest an.
                 </div>
+              ) : (
+                <>
+                  {months.map((data) => (
+                    <MonthRow key={data.month} data={data} onClick={() => setShowDetails(data.month)} />
+                  ))}
+
+                  {/* special differences row when some months had expenses > revenues */}
+                  {differences && (
+                    <button type="button" onClick={() => setShowDiffDetails(true)} className="w-full text-left bg-white dark:bg-gray-800 rounded-lg px-4 py-3 sm:px-0 sm:py-4 shadow-sm border border-gray-100 dark:border-gray-700 cursor-pointer hover:shadow-md transition-shadow">
+                      <div className="hidden sm:grid items-center text-sm font-medium text-gray-600 dark:text-gray-400"
+                        style={{ gridTemplateColumns: '1fr 140px 140px 120px 120px 120px 160px', columnGap: '8px' }}>
+                        <div className="pl-2">Diferență (luni cu cheltuieli &gt; venituri)</div>
+                        <div className="text-right">{formatAmount(0)}</div>
+                        <div className="text-right">{formatAmount(differences.totalDifference)}</div>
+                        <div className="text-right">{formatAmount(-differences.casReduction)}</div>
+                        <div className="text-right">{formatAmount(-differences.cassReduction)}</div>
+                        <div className="text-right">{formatAmount(-(differences.incomeTaxReduction ?? 0))}</div>
+                        <div className="text-right pr-2">{formatAmount(differences.casReduction + differences.cassReduction + (differences.incomeTaxReduction ?? 0))}</div>
+                      </div>
+
+                      <div className="flex sm:hidden items-center justify-between text-sm text-gray-600 dark:text-gray-400">
+                        <div className="flex-1">Diferență</div>
+                        <div className="text-right">{formatAmount(differences.totalDifference ?? 0)}</div>
+                      </div>
+                    </button>
+                  )}
+                  {showDiffDetails && differences && (
+                    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+                      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
+                        className="bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-xl border border-gray-200 dark:border-gray-700">
+                        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Detalii — Diferență (cheltuieli &gt; venituri)</h2>
+                        <ul className="space-y-2 text-gray-700 dark:text-gray-300">
+                          <li className="flex justify-between"><span>Total diferență</span><strong>{formatAmount(differences.totalDifference)}</strong></li>
+                          <li className="flex justify-between"><span>Reducere CAS</span><strong>{formatAmount(differences.casReduction)}</strong></li>
+                          <li className="flex justify-between"><span>Reducere CASS</span><strong>{formatAmount(differences.cassReduction)}</strong></li>
+                          <li className="flex justify-between"><span>Impozit pe diferență</span><strong>{formatAmount(-(differences.incomeTaxReduction ?? 0))}</strong></li>
+                          <li className="flex justify-between"><span>Suma CASS (pe luni)</span><strong>{formatAmount(differences.cassMonthSum ?? 0)}</strong></li>
+                          <li className="flex justify-between"><span>Rest CASS (reconciliere)</span><strong>{formatAmount(differences.cassRest ?? 0)}</strong></li>
+                        </ul>
+                        <button onClick={() => setShowDiffDetails(false)} className="mt-6 w-full px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">Închide</button>
+                      </motion.div>
+                    </div>
+                  )}
+                </>
               )}
             </div>
 
@@ -246,7 +246,7 @@ React.useEffect(() => {
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
               className="bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-xl border border-gray-200 dark:border-gray-700">
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-                Detalii — Total Anual {year}
+                Detalii — Total Anual {selectedYear}
               </h2>
               <ul className="space-y-2 text-gray-700 dark:text-gray-300">
                 <li className="flex justify-between"><span>Total venituri</span><strong>{formatAmount(totals.revenues)}</strong></li>
@@ -255,6 +255,7 @@ React.useEffect(() => {
                 <li className="flex justify-between"><span>Total CAS</span><strong>{formatAmount(totals.cas)}</strong></li>
                 <li className="flex justify-between"><span>Total CASS</span><strong>{formatAmount(totals.cass)}</strong></li>
                 <li className="flex justify-between"><span>Total impozit pe venit</span><strong>{formatAmount(totals.incomeTax)}</strong></li>
+                <li className="flex justify-between border-t border-gray-200 dark:border-gray-600 pt-2"><span>Total taxe (CAS + CASS + Impozit)</span><strong>{formatAmount(totalTaxes)}</strong></li>
                 <li className="flex justify-between border-t border-gray-200 dark:border-gray-600 pt-2 font-semibold"><span>Total venit net</span><strong>{formatAmount(totals.netIncome)}</strong></li>
               </ul>
               <button onClick={() => setShowTotalDetails(false)} className="mt-6 w-full px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">

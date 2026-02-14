@@ -6,14 +6,18 @@ import Layout from '../components/Layout';
 import KpiCard from '../components/KpiCard';
 import { useUserData } from '../hooks/useUserData';
 import { computeByRules } from '../lib/taxCompute';
+import { AVAILABLE_YEARS } from '../lib/years';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const [selectedPeriod, setSelectedPeriod] = useState<'month' | 'year'>('month');
   const currentMonth = new Date().getMonth() + 1;
-  const currentYear = new Date().getFullYear();
   const { intrari, iesiri, taxConfig, profile } = useUserData();
-  const calc = useMemo(() => computeByRules(intrari, iesiri, currentYear, taxConfig), [intrari, iesiri, taxConfig]);
+
+  const years = AVAILABLE_YEARS;
+  const [selectedYear, setSelectedYear] = useState<number>(2025);
+
+  const calc = useMemo(() => computeByRules(intrari, iesiri, selectedYear, taxConfig), [intrari, iesiri, taxConfig, selectedYear]);
   const month = calc.months.find(m => m.month === currentMonth)!;
   const data = selectedPeriod === 'month'
     ? { netIncome: month.netIncome, revenues: month.revenues, expenses: month.expenses }
@@ -37,9 +41,20 @@ const Dashboard: React.FC = () => {
             </div>
             <div className="flex items-center gap-2">
               <Calendar className="w-5 h-5 text-gray-500" />
-              <span className="text-sm text-gray-600 dark:text-gray-300">
-                {selectedPeriod === 'month' ? `Luna ${currentMonth}/${currentYear}` : `Anul ${currentYear}`}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-600 dark:text-gray-300">
+                  {selectedPeriod === 'month' ? `Luna ${currentMonth}/${selectedYear}` : `Anul ${selectedYear}`}
+                </span>
+                <select
+                  value={selectedYear}
+                  onChange={(e) => setSelectedYear(Number(e.target.value))}
+                  className="bg-transparent border border-gray-300 dark:border-gray-600 rounded-lg px-2 py-1 text-sm text-gray-700 dark:text-gray-200"
+                >
+                  {years.map((y) => (
+                    <option key={y} value={y}>{y}</option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
 
@@ -67,26 +82,26 @@ const Dashboard: React.FC = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <KpiCard
-            title={`Venit net după taxe - ${selectedPeriod === 'month' ? 'luna aceasta' : 'anul acesta'}`}
+            title={`Venit net după taxe - ${selectedPeriod === 'month' ? 'luna aceasta' : 'anul selectat'}`}
             value={formatAmount(data.netIncome)}
-            sublabel={selectedPeriod === 'month' ? `Luna ${currentMonth}/${currentYear}` : `Anul ${currentYear}`}
+            sublabel={selectedPeriod === 'month' ? `Luna ${currentMonth}/${selectedYear}` : `Anul ${selectedYear}`}
             icon={<DollarSign className="w-5 h-5" />}
           />
           <KpiCard
-            title={`Venituri - ${selectedPeriod === 'month' ? 'luna aceasta' : 'anul acesta'}`}
+            title={`Venituri - ${selectedPeriod === 'month' ? 'luna aceasta' : 'anul selectat'}`}
             value={formatAmount(data.revenues)}
             sublabel="Din facturi plătite"
             icon={<TrendingUp className="w-5 h-5" />}
           />
           <KpiCard
-            title={`Cheltuieli - ${selectedPeriod === 'month' ? 'luna aceasta' : 'anul acesta'}`}
+            title={`Cheltuieli - ${selectedPeriod === 'month' ? 'luna aceasta' : 'anul selectat'}`}
             value={formatAmount(data.expenses)}
             sublabel="Total cheltuieli"
             icon={<TrendingDown className="w-5 h-5" />}
           />
           <KpiCard
             title="Luna/An activ"
-            value={selectedPeriod === 'month' ? `${currentMonth}/${currentYear}` : `${currentYear}`}
+            value={selectedPeriod === 'month' ? `${currentMonth}/${selectedYear}` : `${selectedYear}`}
             sublabel="Perioada selectată"
             icon={<Calendar className="w-5 h-5" />}
           />
@@ -103,7 +118,7 @@ const Dashboard: React.FC = () => {
           </button>
           <button onClick={() => navigate('/taxes')} className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg text-left hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors">
             <h3 className="font-medium text-green-900 dark:text-green-400 mb-1">Vezi taxele</h3>
-            <p className="text-sm text-green-700 dark:text-green-300">Calculele pentru anul curent</p>
+            <p className="text-sm text-green-700 dark:text-green-300">Calculele pentru anul selectat</p>
           </button>
         </div>
       </div>
